@@ -32,14 +32,14 @@ export function App() {
   return <div className="app-shell">
     <header>
       <a className="brand" href="#"><span className="brand-mark">M</span><span>MiraFlores <b>Tax</b></span></a>
-      <div className="header-actions"><button className="icon-button" aria-label="Notifications"><Bell size={19}/><span className="notification-dot"/></button><button className="avatar" aria-label="Account menu">MF</button></div>
+      <div className="header-actions"><div className="role-preview"><span>PROTOTYPE VIEW</span><a className={route !== '#cpa-review' ? 'selected' : ''} href="#documents">Client</a><a className={route === '#cpa-review' ? 'selected' : ''} href="#cpa-review">CPA</a></div><button className="icon-button" aria-label="Notifications"><Bell size={19}/><span className="notification-dot"/></button><button className="avatar" aria-label="Account menu">{route === '#cpa-review' ? 'JL' : 'MF'}</button></div>
     </header>
     <aside>
-      <nav aria-label="Main navigation"><a className={route === '#home' || route === '' ? 'active' : ''} href="#home"><Home size={19}/>Home</a><a className={route === '#documents' ? 'active' : ''} href="#documents"><FolderOpen size={19}/>Documents<span className="nav-count">2</span></a><a className={route === '#messages' ? 'active' : ''} href="#messages"><MessageSquare size={19}/>Messages</a></nav>
+      {route === '#cpa-review' ? <nav aria-label="CPA navigation"><a className="active" href="#cpa-review"><FileText size={19}/>CPA review<span className="nav-count">1</span></a></nav> : <nav aria-label="Client navigation"><a className={route === '#home' || route === '' ? 'active' : ''} href="#home"><Home size={19}/>Home</a><a className={route === '#documents' ? 'active' : ''} href="#documents"><FolderOpen size={19}/>Documents<span className="nav-count">2</span></a><a className={route === '#messages' ? 'active' : ''} href="#messages"><MessageSquare size={19}/>Messages</a></nav>}
       <div className="secure-note"><LockKeyhole size={17}/><div><strong>Your data is protected</strong><span>Bank-level encryption</span></div></div>
       <div className="help-card"><CircleHelp size={20}/><div><strong>Need some help?</strong><span>Your tax team is here.</span><button>Ask a question</button></div></div>
     </aside>
-    <main>{route === '#documents' ? <ChallengeEight/> : route === '#messages' ? <div className="empty-state"><MessageSquare size={28}/><h1>Messages</h1><p>Your contextual conversations will appear here in a later challenge.</p><a href="#home">Return home</a></div> : <>
+    <main>{route === '#documents' ? <ChallengeEight role="client"/> : route === '#cpa-review' ? <ChallengeEight role="cpa"/> : route === '#messages' ? <div className="empty-state"><MessageSquare size={28}/><h1>Messages</h1><p>Your contextual conversations will appear here in a later challenge.</p><a href="#home">Return home</a></div> : <>
       <div className="eyebrow">2025 INDIVIDUAL RETURN</div>
       <section className="welcome-row"><div><h1>Good morning, {workspace.clientName}.</h1><p>Let’s keep your return moving. We’ll guide you one step at a time.</p></div><div className="deadline"><span>FILING DEADLINE</span><strong>{workspace.deadline}</strong></div></section>
       {progress < 100 ? <section className="next-action">
