@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Bell, Check, CheckCircle2, ChevronRight, CircleHelp, FileText, FolderOpen, Home, LockKeyhole, MessageSquare, Upload, X } from 'lucide-react'
 import { completeTask, getWorkspace } from './mockApi'
 import type { ClientWorkspace, OnboardingTask } from './types'
+import { ChallengeEight } from './ChallengeEight'
 
 const taskIcon = { questionnaire: CircleHelp, document: Upload, review: FileText }
 
@@ -10,7 +11,9 @@ export function App() {
   const [activeTask, setActiveTask] = useState<OnboardingTask | null>(null)
   const [saving, setSaving] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  const [route, setRoute] = useState(location.hash || '#home')
   useEffect(() => { getWorkspace().then(setWorkspace) }, [])
+  useEffect(() => { const update = () => setRoute(location.hash || '#home'); addEventListener('hashchange', update); return () => removeEventListener('hashchange', update) }, [])
   const completed = workspace?.tasks.filter(task => task.status === 'complete').length ?? 0
   const progress = workspace ? Math.round((completed / workspace.tasks.length) * 100) : 0
   const nextTask = workspace?.tasks.find(task => task.status === 'ready')
@@ -32,11 +35,11 @@ export function App() {
       <div className="header-actions"><button className="icon-button" aria-label="Notifications"><Bell size={19}/><span className="notification-dot"/></button><button className="avatar" aria-label="Account menu">MF</button></div>
     </header>
     <aside>
-      <nav aria-label="Main navigation"><a className="active" href="#"><Home size={19}/>Home</a><a href="#documents"><FolderOpen size={19}/>Documents<span className="nav-count">2</span></a><a href="#messages"><MessageSquare size={19}/>Messages</a></nav>
+      <nav aria-label="Main navigation"><a className={route === '#home' || route === '' ? 'active' : ''} href="#home"><Home size={19}/>Home</a><a className={route === '#documents' ? 'active' : ''} href="#documents"><FolderOpen size={19}/>Documents<span className="nav-count">2</span></a><a className={route === '#messages' ? 'active' : ''} href="#messages"><MessageSquare size={19}/>Messages</a></nav>
       <div className="secure-note"><LockKeyhole size={17}/><div><strong>Your data is protected</strong><span>Bank-level encryption</span></div></div>
       <div className="help-card"><CircleHelp size={20}/><div><strong>Need some help?</strong><span>Your tax team is here.</span><button>Ask a question</button></div></div>
     </aside>
-    <main>
+    <main>{route === '#documents' ? <ChallengeEight/> : route === '#messages' ? <div className="empty-state"><MessageSquare size={28}/><h1>Messages</h1><p>Your contextual conversations will appear here in a later challenge.</p><a href="#home">Return home</a></div> : <>
       <div className="eyebrow">2025 INDIVIDUAL RETURN</div>
       <section className="welcome-row"><div><h1>Good morning, {workspace.clientName}.</h1><p>Let’s keep your return moving. We’ll guide you one step at a time.</p></div><div className="deadline"><span>FILING DEADLINE</span><strong>{workspace.deadline}</strong></div></section>
       {progress < 100 ? <section className="next-action">
@@ -48,7 +51,7 @@ export function App() {
         <div className="progress-track"><span style={{width: `${progress}%`}}/></div>
         <div className="task-list">{visibleTasks?.map(task => <TaskRow key={task.id} task={task} onOpen={() => task.status === 'ready' && setActiveTask(task)}/>)}</div>
       </section>
-      <footer><span>Return for {workspace.returnName}</span><span>Questions? <button>Contact your tax team</button></span></footer>
+      <footer><span>Return for {workspace.returnName}</span><span>Questions? <button>Contact your tax team</button></span></footer></>}
     </main>
     {activeTask && <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && setActiveTask(null)}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="task-title">
       <button className="close" onClick={() => setActiveTask(null)} aria-label="Close"><X/></button><span className="modal-icon">{activeTask.type === 'document' ? <Upload/> : <CircleHelp/>}</span><div className="eyebrow">STEP {workspace.tasks.indexOf(activeTask) + 1} OF {workspace.tasks.length}</div><h2 id="task-title">{activeTask.title}</h2>
