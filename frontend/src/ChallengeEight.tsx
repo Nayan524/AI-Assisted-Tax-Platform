@@ -1,15 +1,19 @@
-import { useRef, useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
+import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { Bot, Check, CheckCircle2, ChevronRight, FileCheck2, FileText, Info, LockKeyhole, MessageCircle, Pencil, ScanText, ShieldCheck, Upload } from 'lucide-react'
 
 type Status = 'ai' | 'verified' | 'approval' | 'locked' | 'editable'
-type Field = { label: string; value: string; status: Status; detail: string; source?: string }
+GlobalWorkerOptions.workerSrc = pdfWorker
+
+type Field = { label: string; value: string; status: Status; detail: string; source?: string; sourceValue?: string; page?: number; transformation?: string; bbox?: [number,number,number,number] }
 
 const fields: Field[] = [
-  { label: 'Employer name', value: 'Northstar Design Group', status: 'verified', detail: 'Verified by Jordan Lee, CPA on Aug 19', source: 'W-2 · Box c' },
-  { label: 'Wages, tips, other compensation', value: '$86,420.00', status: 'ai', detail: 'Extracted with 98% confidence', source: 'W-2 · Box 1' },
-  { label: 'Federal income tax withheld', value: '$12,636.00', status: 'approval', detail: 'Different from prior-year pattern', source: 'W-2 · Box 2' },
-  { label: 'Social Security wages', value: '$86,420.00', status: 'locked', detail: 'Calculated from verified payroll data', source: 'W-2 · Box 3' },
-  { label: 'Occupation', value: 'Product designer', status: 'editable', detail: 'Client-provided answer · Editable by CPA' },
+  { label: 'Employer name', value: 'Northstar Design Group', status: 'verified', detail: 'Verified by Jordan Lee, CPA on Aug 19', source: 'W-2 · Box c', sourceValue: 'NORTHSTAR DESIGN GROUP', page: 1, transformation: 'Capitalization normalized for display', bbox:[.038,.199,.461,.114] },
+  { label: 'Wages, tips, other compensation', value: '$86,420.00', status: 'ai', detail: 'Extracted with 98% confidence', source: 'W-2 · Box 1', sourceValue: '86420.00', page: 1, transformation: 'Formatted as currency; numeric value unchanged', bbox:[.726,.114,.274,.085] },
+  { label: 'Federal income tax withheld', value: '$12,636.00', status: 'approval', detail: 'Different from prior-year pattern', source: 'W-2 · Box 2', sourceValue: '12636.00', page: 1, transformation: 'Formatted as currency; numeric value unchanged', bbox:[.499,.199,.227,.057] },
+  { label: 'Social Security wages', value: '$86,420.00', status: 'locked', detail: 'Calculated from verified payroll data', source: 'W-2 · Box 3', sourceValue: '86420.00', page: 1, transformation: 'Formatted as currency and locked after CPA verification', bbox:[.726,.199,.274,.057] },
+  { label: 'Occupation', value: 'Product designer', status: 'editable', detail: 'Client-provided answer · Editable by CPA', source: 'Client questionnaire · Employment', sourceValue: 'Product designer', page: 1, transformation: 'No transformation' },
 ]
 
 const statusMeta: Record<Status, { label: string; icon: typeof Bot }> = {
@@ -33,7 +37,7 @@ export function ChallengeEight({role = 'cpa', clientName = 'Maya & Daniel Flores
       <div className="field-table">{fields.map(field => <FieldRow key={field.label} field={field} value={values[field.label]} approved={approved && field.status === 'approval'} onChange={value => setValues({...values,[field.label]:value})} onSelect={() => setSelected(field)} onApprove={() => setApproved(true)}/>)}</div>
       <div className="return-footer"><span><Check size={16}/>CPA changes save automatically</span><button className="dark-button">Continue review <ChevronRight size={17}/></button></div>
     </section>}
-    {selected && <div className="explain-panel"><button className="panel-close" onClick={() => setSelected(null)}>×</button><StatusBadge status={selected.status}/><h3>{selected.label}</h3><p>{selected.detail}</p>{selected.source && <div className="evidence"><ScanText size={19}/><div><strong>Source evidence</strong><span>{selected.source} · 2025 W-2.pdf</span></div></div>}<div className="why-box"><strong>Why is this {selected.status === 'locked' ? 'read only' : 'shown this way'}?</strong><p>{explanation(selected.status)}</p></div></div>}
+    {selected && <div className="explain-panel trace-panel"><button className="panel-close" onClick={() => setSelected(null)}>×</button><StatusBadge status={selected.status}/><h3>{selected.label}</h3><p>{selected.detail}</p><SourceTrace field={selected}/><div className="why-box"><strong>Why is this {selected.status === 'locked' ? 'read only' : 'shown this way'}?</strong><p>{explanation(selected.status)}</p></div></div>}
   </div>
 }
 
@@ -79,4 +83,18 @@ function FieldRow({field,value,approved,onChange,onSelect,onApprove}:{field:Fiel
 }
 
 function StatusBadge({status}:{status:Status}) { const item=statusMeta[status], Icon=item.icon; return <span className={`status-badge status-${status}`}><Icon size={13}/>{item.label}</span> }
+function SourceTrace({field}:{field:Field}) {
+  const box=field.source?.split('·').pop()?.trim()||'Answer'
+  const isW2=field.source?.startsWith('W-2')
+  return <div className="source-trace"><div className="trace-heading"><div><span>SOURCE OF TRUTH</span><strong>{isW2?'sample-w2-2025.pdf':'Client questionnaire'}</strong></div><small>Page {field.page||1} · {box}</small></div>{isW2?<PdfSourceViewer field={field}/>:<div className="questionnaire-source"><small>Employment details · Occupation</small><strong className="source-highlight">{field.sourceValue}</strong></div>}<div className="trace-mapping"><div><span>Source value</span><strong>{field.sourceValue}</strong></div><ChevronRight/><div><span>Return value</span><strong>{field.value}</strong></div></div><div className="transformation"><strong>Transformation</strong><span>{field.transformation}</span></div></div>
+}
+function PdfSourceViewer({field}:{field:Field}) {
+  const canvasRef=useRef<HTMLCanvasElement>(null)
+  const [loading,setLoading]=useState(true)
+  const [expanded,setExpanded]=useState(false)
+  useEffect(()=>{let cancelled=false;async function render(){setLoading(true);const pdf=await getDocument({url:'/sample-w2-2025.pdf'}).promise;const page=await pdf.getPage(field.page||1);const base=page.getViewport({scale:1});const width=expanded?Math.min(window.innerWidth-120,1050):430;const viewport=page.getViewport({scale:width/base.width});const canvas=canvasRef.current;if(!canvas||cancelled)return;const ratio=devicePixelRatio||1;canvas.width=viewport.width*ratio;canvas.height=viewport.height*ratio;canvas.style.width=`${viewport.width}px`;canvas.style.height=`${viewport.height}px`;const context=canvas.getContext('2d');if(!context)return;await page.render({canvas,canvasContext:context,viewport,transform:ratio!==1?[ratio,0,0,ratio,0,0]:undefined}).promise;if(!cancelled)setLoading(false)}render();return()=>{cancelled=true}},[field,expanded])
+  const [x,y,w,h]=field.bbox||[0,0,0,0]
+  const viewer=<div className={`pdf-source-viewer ${expanded?'expanded':''}`}>{loading&&<div className="pdf-loading">Rendering original PDF…</div>}<canvas ref={canvasRef}/><div className="pdf-highlight" style={{left:`${x*100}%`,top:`${y*100}%`,width:`${w*100}%`,height:`${h*100}%`}}><span>{field.source} · {field.sourceValue}</span></div>{!expanded&&<button className="open-pdf-button" onClick={()=>setExpanded(true)}>Open full document</button>}</div>
+  return expanded?<div className="full-pdf-backdrop"><div className="full-pdf-header"><button onClick={()=>setExpanded(false)}>← Back to CPA review</button><div><strong>sample-w2-2025.pdf</strong><span>Page {field.page||1} · Highlighting {field.source}</span></div></div>{viewer}</div>:viewer
+}
 function explanation(status:Status) { return status === 'locked' ? 'This value is calculated from CPA-verified payroll fields. A CPA must change its source values to update it.' : status === 'ai' ? 'The value was extracted by AI and remains unverified until a CPA checks it against the source document.' : status === 'approval' ? 'The value looks unusual compared with related information and requires CPA review.' : 'Its status shows whether it can be edited and whether a CPA has reviewed it.' }
