@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import { AlertTriangle, Bot, Check, CheckCircle2, ChevronRight, FileCheck2, FileText, History, Info, LockKeyhole, MessageCircle, Pencil, ScanText, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
+import { AlertTriangle, Bot, Check, CheckCircle2, ChevronRight, Download, FileCheck2, FileText, History, Info, LockKeyhole, MessageCircle, Pencil, ScanText, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
+import { getMockAiReview } from './mockAi'
 
 type Status = 'ai' | 'verified' | 'approval' | 'locked' | 'editable'
 GlobalWorkerOptions.workerSrc = pdfWorker
@@ -21,23 +22,27 @@ const statusMeta: Record<Status, { label: string; icon: typeof Bot }> = {
   approval: { label: 'Needs CPA review', icon: Info }, locked: { label: 'Calculated · locked', icon: LockKeyhole }, editable: { label: 'CPA editable', icon: Pencil },
 }
 
-export function ChallengeEight({role = 'cpa', clientName = 'Maya & Daniel Flores', onUploadComplete}: {role?: 'client' | 'cpa'; clientName?: string; onUploadComplete?:()=>void}) {
+const reviewableLabels=fields.filter(field=>field.status==='ai'||field.status==='approval').map(field=>field.label)
+export function getReviewQueueCount(clientId:string){let reviewed:string[]=[];try{reviewed=JSON.parse(sessionStorage.getItem(`reviewed-fields-${clientId}`)||'[]')}catch{/* none reviewed */}return reviewableLabels.filter(label=>!reviewed.includes(label)).length}
+function recordReviewedField(clientId:string,label:string){let reviewed:string[]=[];try{reviewed=JSON.parse(sessionStorage.getItem(`reviewed-fields-${clientId}`)||'[]')}catch{/* start fresh */}if(!reviewed.includes(label))sessionStorage.setItem(`reviewed-fields-${clientId}`,JSON.stringify([...reviewed,label]));dispatchEvent(new Event('workspace-counts-changed'))}
+
+export function ChallengeEight({role = 'cpa', clientId='flores-2025', clientName = 'Maya & Daniel Flores', onUploadComplete}: {role?: 'client' | 'cpa'; clientId?:string; clientName?: string; onUploadComplete?:()=>void}) {
   const [screen, setScreen] = useState<'documents' | 'return'>('documents')
   const [selected, setSelected] = useState<Field | null>(null)
   const [values, setValues] = useState<Record<string,string>>(() => Object.fromEntries(fields.map(f => [f.label, f.value])))
   const [approved, setApproved] = useState(false)
   if (role === 'client') return <ClientDocuments onContinue={onUploadComplete}/>
   return <div className="review-page">
-    <div className="assignment-context"><span>ASSIGNED CLIENT</span><strong>{clientName}</strong><small>2025 individual return · Assigned to Jordan Lee, CPA</small></div>
-    <div className="review-title"><div><div className="eyebrow">CPA REVIEW WORKSPACE</div><h1>Review extracted tax details</h1><p>Compare AI-extracted values with this client’s source documents, correct them, and verify them for the return.</p></div><div className="review-progress"><CheckCircle2 size={18}/><span><strong>3 of 4 documents reviewed</strong><small>Client access is restricted</small></span></div></div>
-    <div className="screen-tabs" role="tablist"><button className={screen === 'documents' ? 'selected' : ''} onClick={() => setScreen('documents')}><FileText size={17}/>Source documents</button><button className={screen === 'return' ? 'selected' : ''} onClick={() => setScreen('return')}><FileCheck2 size={17}/>CPA review <span className="review-count">1</span></button></div>
+    <div className="assignment-context"><span>ASSIGNED CLIENT</span><strong>{clientName}</strong><small>2025 individual return</small></div>
+    <div className="review-title"><div><div className="eyebrow">CPA REVIEW WORKSPACE</div><h1>Review Details</h1></div><div className="review-progress"><CheckCircle2 size={18}/><span><strong>3 of 4 documents reviewed</strong><small>Client access is restricted</small></span></div></div>
+    <div className="screen-tabs" role="tablist"><button className={screen === 'documents' ? 'selected' : ''} onClick={() => setScreen('documents')}><FileText size={17}/>Source documents</button><button className={screen === 'return' ? 'selected' : ''} onClick={() => setScreen('return')}><FileCheck2 size={17}/>CPA review</button></div>
     <div className="affordance-key"><strong>How to read this screen</strong>{(['editable','ai','verified','approval','locked'] as Status[]).map(status => <StatusBadge key={status} status={status}/>)}</div>
     {screen === 'documents' ? <Documents onReview={() => setScreen('return')}/> : <section className="return-card">
       <div className="return-header"><div><span className="section-number">W-2</span><div><h2>Wages and withholding</h2><p>Northstar Design Group · Daniel Flores</p></div></div><button className="source-link" onClick={() => setScreen('documents')}>View source document <ChevronRight size={16}/></button></div>
-      <div className="field-table">{fields.map(field => <FieldRow key={field.label} field={field} value={values[field.label]} approved={approved && field.status === 'approval'} onChange={value => setValues({...values,[field.label]:value})} onSelect={() => setSelected(field)} onApprove={() => setApproved(true)}/>)}</div>
+      <div className="field-table">{fields.map(field => <FieldRow key={field.label} field={field} value={values[field.label]} approved={approved && field.status === 'approval'} onChange={value => setValues({...values,[field.label]:value})} onSelect={() => setSelected(field)} onApprove={() => {setApproved(true);recordReviewedField(clientId,field.label)}}/>)}</div>
       <div className="return-footer"><span><Check size={16}/>CPA changes save automatically</span><button className="dark-button">Continue review <ChevronRight size={17}/></button></div>
     </section>}
-    {selected && <div className="explain-panel trace-panel"><button className="panel-close" onClick={() => setSelected(null)}>×</button><StatusBadge status={selected.status}/><h3>{selected.label}</h3><p>{selected.detail}</p><SourceTrace field={selected}/><div className="why-box"><strong>Why is this {selected.status === 'locked' ? 'read only' : 'shown this way'}?</strong><p>{explanation(selected.status)}</p></div></div>}
+    {selected && <div className="explain-panel trace-panel"><button className="panel-close" onClick={() => setSelected(null)}>×</button><StatusBadge status={selected.status}/><h3>{selected.label}</h3><p>{selected.detail}</p><AiTrustPanel field={{...selected,value:values[selected.label]}} onApply={value=>{setValues(current=>({...current,[selected.label]:value}));recordReviewedField(clientId,selected.label);if(selected.status==='approval')setApproved(true)}}/><SourceTrace field={{...selected,value:values[selected.label]}}/><div className="why-box"><strong>Why is this {selected.status === 'locked' ? 'read only' : 'shown this way'}?</strong><p>{explanation(selected.status)}</p></div></div>}
   </div>
 }
 
@@ -76,10 +81,19 @@ function ClientDocument({title,subtitle,status,meta,complete=false,onRemove}:{ti
 }
 
 function Documents({onReview}: {onReview: () => void}) {
-  return <section className="document-grid">
-    <article className="document-card"><div className="document-preview"><span>W-2</span><div className="paper-lines"/></div><div className="document-copy"><div><h3>2025 W-2</h3><p>Northstar Design Group · Daniel Flores</p></div><StatusBadge status="approval"/><div className="document-meta"><span>Uploaded Aug 18</span><span>5 values extracted</span></div><button className="dark-button" onClick={onReview}>Review extracted values <ChevronRight size={17}/></button></div></article>
-    <article className="document-card"><div className="document-preview done"><Check size={24}/></div><div className="document-copy"><div><h3>2025 W-2</h3><p>Beacon Health · Maya Flores</p></div><StatusBadge status="verified"/><div className="document-meta"><span>Uploaded Aug 12</span><span>Reviewed Aug 14</span></div><button className="outline-button" onClick={onReview}>View details <ChevronRight size={17}/></button></div></article>
-    <article className="document-card muted-card"><div className="document-preview locked"><LockKeyhole size={22}/></div><div className="document-copy"><div><h3>Engagement letter</h3><p>MiraFlores Tax · Signed copy</p></div><StatusBadge status="locked"/><div className="document-meta"><span>Signed Aug 10</span><span>Final document</span></div><button className="outline-button">View document <ChevronRight size={17}/></button></div></article>
+  const documents = [
+    '2025 W-2 — Northstar Design Group — Daniel Flores.pdf',
+    '2025 W-2 — Beacon Health — Maya Flores.pdf',
+    'Engagement letter — Signed copy.pdf',
+  ]
+  return <section className="source-document-list" aria-label="Source documents">
+    {documents.map(name => <div className="source-document-row" key={name}>
+      <span>{name}</span>
+      <div className="source-document-actions">
+        <a href="/sample-w2-2025.pdf" download={name} aria-label={`Download ${name}`} title="Download document"><Download size={17}/></a>
+        <button onClick={onReview} aria-label={`View details for ${name}`} title="View details"><ChevronRight size={19}/></button>
+      </div>
+    </div>)}
   </section>
 }
 
@@ -88,7 +102,16 @@ function FieldRow({field,value,approved,onChange,onSelect,onApprove}:{field:Fiel
   return <div className={`field-row field-${effective}`}><div className="field-label"><span>{field.label}</span>{field.source && <small>{field.source}</small>}</div><div className="field-value">{field.status === 'editable' ? <div className="editable-wrap"><input aria-label={field.label} value={value} onChange={e => onChange(e.target.value)}/><Pencil size={15}/></div> : <button className="value-button" onClick={onSelect}>{value}<ChevronRight size={16}/></button>}<StatusBadge status={effective}/><small>{approved ? 'Verified by Jordan Lee, CPA just now' : field.detail}</small></div>{field.status === 'approval' && !approved && <button className="approve-button" onClick={onApprove}><Check size={15}/>Verify value</button>}{field.status === 'locked' && <button className="why-link" onClick={onSelect}>Why?</button>}</div>
 }
 
-function StatusBadge({status}:{status:Status}) { const item=statusMeta[status], Icon=item.icon; return <span className={`status-badge status-${status}`}><Icon size={13}/>{item.label}</span> }
+function StatusBadge({status}:{status:Status}) { const item=statusMeta[status], Icon=item.icon;const preview=status==='editable'?'You can change this value directly before confirming it.':status==='ai'?'AI read this value from the source document. It still needs CPA confirmation.':undefined;return <span className={`status-badge status-${status}`} data-preview={preview} tabIndex={preview?0:undefined}><Icon size={13}/>{item.label}</span> }
+function AiTrustPanel({field,onApply}:{field:Field;onApply:(value:string)=>void}) {
+  const review=getMockAiReview(field.label,field.value)
+  const [correcting,setCorrecting]=useState(false)
+  const [draft,setDraft]=useState(field.value)
+  const [reason,setReason]=useState('Source document confirms this value')
+  const [saved,setSaved]=useState(false)
+  function apply(value:string){onApply(value);setSaved(true);setCorrecting(false)}
+  return <section className="ai-trust-card"><div className="ai-trust-heading"><span><Bot size={15}/>AI ASSISTANCE</span><strong>{review.confidence}% confidence · {review.uncertainty} uncertainty</strong></div><h4>{review.summary}</h4><p>{review.rationale}</p><div className="ai-evidence"><strong>Evidence used</strong>{review.evidence.map(item=><span key={item}><Check size={12}/>{item}</span>)}</div><div className="ai-next-action"><small>RECOMMENDED NEXT ACTION</small><strong>{review.action}</strong></div>{saved?<div className="ai-saved"><CheckCircle2 size={15}/><span><strong>CPA correction saved</strong><small>Recorded with your reason. Continue reviewing without losing your place.</small></span></div>:correcting?<div className="ai-correction"><label>Corrected value<input value={draft} onChange={event=>setDraft(event.target.value)}/></label><label>Reason<select value={reason} onChange={event=>setReason(event.target.value)}><option>Source document confirms this value</option><option>AI selected the wrong field</option><option>Client provided corrected information</option><option>Professional judgment</option></select></label><div><button onClick={()=>setCorrecting(false)}>Cancel</button><button className="primary" onClick={()=>apply(draft)} disabled={!draft.trim()}>Save correction</button></div></div>:<div className="ai-actions"><button onClick={()=>apply(review.suggestedValue)}><Check size={14}/>Accept suggestion</button><button onClick={()=>{setDraft(field.value);setCorrecting(true)}}><Pencil size={14}/>Correct AI</button></div>}</section>
+}
 function SourceTrace({field}:{field:Field}) {
   const box=field.source?.split('·').pop()?.trim()||'Answer'
   const isW2=field.source?.startsWith('W-2')
