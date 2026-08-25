@@ -33,6 +33,11 @@ export function App() {
     setActiveTask(null)
   }
 
+  function openTask(task: OnboardingTask) {
+    if (task.type === 'document') { location.hash = '#documents'; return }
+    setActiveTask(task)
+  }
+
   function login(nextRole: UserRole, nextTenantId: string) {
     sessionStorage.setItem('mock-role', nextRole)
     sessionStorage.setItem('mock-tenant', nextTenantId)
@@ -64,24 +69,24 @@ export function App() {
       <div className="secure-note"><LockKeyhole size={17}/><div><strong>Your data is protected</strong><span>Bank-level encryption</span></div></div>
       <div className="help-card">{role === 'cpa' ? <BriefcaseBusiness size={20}/> : <CircleHelp size={20}/>}<div><strong>{role === 'cpa' ? 'MiraFlores Tax' : 'Need some help?'}</strong><span>{role === 'cpa' ? 'Jordan Lee · Preparer' : 'Your tax team is here.'}</span><button>{role === 'cpa' ? 'Firm resources' : 'Ask a question'}</button></div></div>
     </aside>
-    <main>{role === 'cpa' ? (route === '#cpa-review' && selectedClient ? <ChallengeEight role="cpa" clientName={selectedClient.name}/> : route === '#cpa-status' && selectedClient ? <ReturnStatus role="cpa" clientName={selectedClient.name} onReview={()=>{location.hash='#cpa-review'}}/> : route === '#cpa-clients' ? <CpaClients onOpen={client=>{setSelectedClient(client);location.hash='#cpa-status'}}/> : <CpaDashboard onReview={client => { setSelectedClient(client); location.hash = '#cpa-status' }}/>) : route === '#status' ? <ReturnStatus role="client"/> : route === '#documents' ? <ChallengeEight role="client"/> : route === '#messages' ? <div className="empty-state"><MessageSquare size={28}/><h1>Messages</h1><p>Your contextual conversations will appear here in a later challenge.</p><a href="#home">Return home</a></div> : <>
+    <main>{role === 'cpa' ? (route === '#cpa-review' && selectedClient ? <ChallengeEight role="cpa" clientName={selectedClient.name}/> : route === '#cpa-status' && selectedClient ? <ReturnStatus role="cpa" clientName={selectedClient.name} onReview={()=>{location.hash='#cpa-review'}}/> : route === '#cpa-clients' ? <CpaClients onOpen={client=>{setSelectedClient(client);location.hash='#cpa-status'}}/> : <CpaDashboard onReview={client => { setSelectedClient(client); location.hash = '#cpa-status' }}/>) : route === '#status' ? <ReturnStatus role="client"/> : route === '#documents' ? <ChallengeEight role="client" onUploadComplete={async()=>{const task=workspace.tasks.find(item=>item.status==='ready'&&item.type==='document');if(task)setWorkspace(await completeTask(task.id));location.hash='#home'}}/> : route === '#messages' ? <div className="empty-state"><MessageSquare size={28}/><h1>Messages</h1><p>Your contextual conversations will appear here in a later challenge.</p><a href="#home">Return home</a></div> : <>
       <div className="eyebrow">2025 INDIVIDUAL RETURN</div>
       <section className="welcome-row"><div><h1>Good morning, {workspace.clientName}.</h1><p>Let’s keep your return moving. We’ll guide you one step at a time.</p></div><div className="deadline"><span>FILING DEADLINE</span><strong>{workspace.deadline}</strong></div></section>
       {progress < 100 ? <section className="next-action">
-        <div className="next-copy"><span className="step-pill">YOUR NEXT STEP</span><h2>{nextTask?.title}</h2><p>{nextTask?.description}</p><button className="primary" onClick={() => nextTask && setActiveTask(nextTask)}>Start now <ChevronRight size={18}/></button><span className="estimate">{nextTask?.estimate} · Your answers save automatically</span></div>
+        <div className="next-copy"><span className="step-pill">YOUR NEXT STEP</span><h2>{nextTask?.title}</h2><p>{nextTask?.description}</p><button className="primary" onClick={() => nextTask && openTask(nextTask)}>Start now <ChevronRight size={18}/></button><span className="estimate">{nextTask?.estimate} · Your answers save automatically</span></div>
         <div className="progress-orbit" style={{'--progress': `${progress * 3.6}deg`} as CSSProperties}><div><strong>{progress}%</strong><span>setup complete</span></div></div>
       </section> : <section className="completion-card"><CheckCircle2 size={34}/><div><span className="step-pill">YOU’RE ALL SET</span><h2>Your tax team has everything they need.</h2><p>We’ll notify you if a question comes up during preparation.</p></div></section>}
       <section className="checklist-section">
         <div className="section-heading"><div><h2>Your setup checklist</h2><p>{completed} of {workspace.tasks.length} steps complete</p></div><button className="text-button" onClick={() => setShowAll(!showAll)}>{showAll ? 'Hide completed' : 'View all steps'}</button></div>
         <div className="progress-track"><span style={{width: `${progress}%`}}/></div>
-        <div className="task-list">{visibleTasks?.map(task => <TaskRow key={task.id} task={task} onOpen={() => task.status === 'ready' && setActiveTask(task)}/>)}</div>
+        <div className="task-list">{visibleTasks?.map(task => <TaskRow key={task.id} task={task} onOpen={() => task.status === 'ready' && openTask(task)}/>)}</div>
       </section>
       <footer><span>Return for {workspace.returnName}</span><span>Questions? <button>Contact your tax team</button></span></footer></>}
     </main>
     {activeTask && <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && setActiveTask(null)}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="task-title">
-      <button className="close" onClick={() => setActiveTask(null)} aria-label="Close"><X/></button><span className="modal-icon">{activeTask.type === 'document' ? <Upload/> : <CircleHelp/>}</span><div className="eyebrow">STEP {workspace.tasks.indexOf(activeTask) + 1} OF {workspace.tasks.length}</div><h2 id="task-title">{activeTask.title}</h2>
-      {activeTask.type === 'document' ? <div className="drop-zone"><Upload size={26}/><strong>Drop your file here</strong><span>or click to choose a PDF, JPG, or PNG</span></div> : <div className="question"><label>Which of these changed in 2025?</label>{['Employment or income','Home or address','Family or dependents','Nothing changed'].map(item => <label className="choice" key={item}><input type="checkbox"/>{item}</label>)}</div>}
-      <button className="primary wide" disabled={saving} onClick={finishTask}>{saving ? 'Saving…' : activeTask.type === 'document' ? 'Upload document' : 'Save and continue'} <ChevronRight size={18}/></button><p className="privacy"><LockKeyhole size={14}/>Only you and your tax team can see this information.</p>
+      <button className="close" onClick={() => setActiveTask(null)} aria-label="Close"><X/></button><span className="modal-icon"><CircleHelp/></span><div className="eyebrow">STEP {workspace.tasks.indexOf(activeTask) + 1} OF {workspace.tasks.length}</div><h2 id="task-title">{activeTask.title}</h2>
+      <div className="question"><label>Which of these changed in 2025?</label>{['Employment or income','Home or address','Family or dependents','Nothing changed'].map(item => <label className="choice" key={item}><input type="checkbox"/>{item}</label>)}</div>
+      <button className="primary wide" disabled={saving} onClick={finishTask}>{saving ? 'Saving…' : 'Save and continue'} <ChevronRight size={18}/></button><p className="privacy"><LockKeyhole size={14}/>Only you and your tax team can see this information.</p>
     </section></div>}
   </div>
 }

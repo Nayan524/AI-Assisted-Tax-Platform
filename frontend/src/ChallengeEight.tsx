@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Bot, Check, CheckCircle2, ChevronRight, FileCheck2, FileText, Info, LockKeyhole, Pencil, ScanText, ShieldCheck } from 'lucide-react'
+import { useRef, useState, type DragEvent } from 'react'
+import { Bot, Check, CheckCircle2, ChevronRight, FileCheck2, FileText, Info, LockKeyhole, MessageCircle, Pencil, ScanText, ShieldCheck, Upload } from 'lucide-react'
 
 type Status = 'ai' | 'verified' | 'approval' | 'locked' | 'editable'
 type Field = { label: string; value: string; status: Status; detail: string; source?: string }
@@ -17,12 +17,12 @@ const statusMeta: Record<Status, { label: string; icon: typeof Bot }> = {
   approval: { label: 'Needs CPA review', icon: Info }, locked: { label: 'Calculated · locked', icon: LockKeyhole }, editable: { label: 'CPA editable', icon: Pencil },
 }
 
-export function ChallengeEight({role = 'cpa', clientName = 'Maya & Daniel Flores'}: {role?: 'client' | 'cpa'; clientName?: string}) {
+export function ChallengeEight({role = 'cpa', clientName = 'Maya & Daniel Flores', onUploadComplete}: {role?: 'client' | 'cpa'; clientName?: string; onUploadComplete?:()=>void}) {
   const [screen, setScreen] = useState<'documents' | 'return'>('documents')
   const [selected, setSelected] = useState<Field | null>(null)
   const [values, setValues] = useState<Record<string,string>>(() => Object.fromEntries(fields.map(f => [f.label, f.value])))
   const [approved, setApproved] = useState(false)
-  if (role === 'client') return <ClientDocuments />
+  if (role === 'client') return <ClientDocuments onContinue={onUploadComplete}/>
   return <div className="review-page">
     <div className="assignment-context"><span>ASSIGNED CLIENT</span><strong>{clientName}</strong><small>2025 individual return · Assigned to Jordan Lee, CPA</small></div>
     <div className="review-title"><div><div className="eyebrow">CPA REVIEW WORKSPACE</div><h1>Review extracted tax details</h1><p>Compare AI-extracted values with this client’s source documents, correct them, and verify them for the return.</p></div><div className="review-progress"><CheckCircle2 size={18}/><span><strong>3 of 4 documents reviewed</strong><small>Client access is restricted</small></span></div></div>
@@ -37,16 +37,27 @@ export function ChallengeEight({role = 'cpa', clientName = 'Maya & Daniel Flores
   </div>
 }
 
-function ClientDocuments() {
+function ClientDocuments({onContinue}:{onContinue?:()=>void}) {
+  const inputRef=useRef<HTMLInputElement>(null)
+  const [uploaded,setUploaded]=useState<string[]>(()=>JSON.parse(sessionStorage.getItem('client-uploaded-files')||'[]'))
+  const [clientTab,setClientTab]=useState<'upload'|'files'>('upload')
+  const [dragging,setDragging]=useState(false)
+  function accept(files:FileList|null){if(!files?.length)return;setUploaded(previous=>{const next=[...Array.from(files).map(file=>file.name),...previous];sessionStorage.setItem('client-uploaded-files',JSON.stringify(next));return next})}
+  function drop(event:DragEvent<HTMLButtonElement>){event.preventDefault();setDragging(false);accept(event.dataTransfer.files)}
   return <div className="review-page client-documents">
-    <div className="review-title"><div><div className="eyebrow">2025 INDIVIDUAL RETURN</div><h1>Your documents</h1><p>Upload requested files and track when your tax team receives them.</p></div><button className="dark-button"><ScanText size={17}/>Upload a document</button></div>
-    <div className="client-boundary"><LockKeyhole size={18}/><div><strong>Your tax team handles verification</strong><span>You only need to upload clear, complete documents. Extracted tax values are reviewed privately by your CPA.</span></div></div>
-    <section className="document-grid">
-      <ClientDocument title="2025 W-2" subtitle="Northstar Design Group · Daniel Flores" status="Under CPA review" meta="Uploaded Aug 18"/>
-      <ClientDocument title="2025 W-2" subtitle="Beacon Health · Maya Flores" status="Received" meta="Uploaded Aug 12" complete/>
-      <ClientDocument title="Engagement letter" subtitle="MiraFlores Tax · Signed copy" status="Complete" meta="Signed Aug 10" complete/>
-    </section>
-    <section className="upload-request"><div className="request-icon"><ScanText/></div><div><span className="eyebrow">1 DOCUMENT REQUEST</span><h3>Upload your interest statements</h3><p>Forms 1099-INT from your bank accounts.</p></div><button className="outline-button">Upload files <ChevronRight size={17}/></button></section>
+    <div className="review-title"><div><div className="eyebrow">2025 INDIVIDUAL RETURN</div><h1>Your documents</h1><p>Upload documents in one place and track when your tax team receives them.</p></div></div>
+    <div className="screen-tabs client-document-tabs" role="tablist"><button className={clientTab==='upload'?'selected':''} onClick={()=>setClientTab('upload')}><Upload size={17}/>Upload documents</button><button className={clientTab==='files'?'selected':''} onClick={()=>setClientTab('files')}><FileText size={17}/>Uploaded files <span className="review-count">{3+uploaded.length}</span></button></div>
+    {clientTab==='upload'?<>
+      <input ref={inputRef} className="visually-hidden" type="file" multiple accept=".pdf,.jpg,.jpeg,.png" onChange={event=>accept(event.target.files)}/>
+      <button className={`single-upload-zone ${dragging?'dragging':''}`} onClick={()=>inputRef.current?.click()} onDragOver={event=>{event.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={drop}><Upload size={25}/><span><strong>Drop your files here</strong><small>or click anywhere to choose PDF, JPG, or PNG files</small></span></button>
+      {uploaded.length>0&&<div className="upload-success"><CheckCircle2 size={18}/><div><strong>Latest upload received</strong><span>{uploaded[0]} · Available to your CPA</span></div><button className="outline-button" onClick={()=>setClientTab('files')}>View uploaded files</button>{onContinue&&<button className="dark-button" onClick={onContinue}>Continue to next step <ChevronRight size={16}/></button>}</div>}
+      <div className="client-boundary"><LockKeyhole size={18}/><div><strong>Your tax team handles verification</strong><span>You only need to upload clear, complete documents. Extracted tax values are reviewed privately by your CPA.</span></div></div>
+      <section className="message-guidance"><MessageCircle/><div><strong>Does your CPA need something else?</strong><span>Additional questions and clarification requests will appear in Messages.</span></div><a href="#messages">Open messages <ChevronRight size={16}/></a></section>
+    </>:<>
+      <div className="uploaded-files-heading"><div><h2>Uploaded files</h2><p>Files you have submitted to MiraFlores Tax.</p></div><button className="outline-button" onClick={()=>setClientTab('upload')}><Upload size={16}/>Upload more</button></div>
+      {uploaded.length>0&&<section className="recent-uploads">{uploaded.map((name,index)=><div className="uploaded-file-row" key={`${name}-${index}`}><span className="file-type">{name.split('.').pop()?.toUpperCase()||'FILE'}</span><div><strong>{name}</strong><small>Uploaded this session · Received</small></div><span className="client-status received"><Check size={12}/>Received</span></div>)}</section>}
+      <section className="document-grid"><ClientDocument title="2025 W-2" subtitle="Northstar Design Group · Daniel Flores" status="Under CPA review" meta="Uploaded Aug 18"/><ClientDocument title="2025 W-2" subtitle="Beacon Health · Maya Flores" status="Received" meta="Uploaded Aug 12" complete/><ClientDocument title="Engagement letter" subtitle="MiraFlores Tax · Signed copy" status="Complete" meta="Signed Aug 10" complete/></section>
+    </>}
   </div>
 }
 
