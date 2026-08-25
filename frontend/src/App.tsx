@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Bell, Check, CheckCircle2, ChevronRight, CircleHelp, FileText, FolderOpen, Home, LockKeyhole, MessageSquare, Upload, X } from 'lucide-react'
+import { Bell, BriefcaseBusiness, Check, CheckCircle2, ChevronRight, CircleHelp, FileText, FolderOpen, Home, LockKeyhole, LogOut, MessageSquare, Upload, UsersRound, X } from 'lucide-react'
 import { completeTask, getWorkspace } from './mockApi'
 import type { ClientWorkspace, OnboardingTask } from './types'
 import { ChallengeEight } from './ChallengeEight'
+import { CpaClients, CpaDashboard, LoginScreen, type UserRole } from './RoleScreens'
+import { ReturnStatus } from './ReturnStatus'
 
 const taskIcon = { questionnaire: CircleHelp, document: Upload, review: FileText }
 
@@ -12,6 +14,10 @@ export function App() {
   const [saving, setSaving] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const [route, setRoute] = useState(location.hash || '#home')
+  const [role, setRole] = useState<UserRole | null>(() => sessionStorage.getItem('mock-role') as UserRole | null)
+  const [tenantId, setTenantId] = useState<string | null>(() => sessionStorage.getItem('mock-tenant'))
+  const [selectedClient, setSelectedClient] = useState<{id:string;name:string} | null>(null)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   useEffect(() => { getWorkspace().then(setWorkspace) }, [])
   useEffect(() => { const update = () => setRoute(location.hash || '#home'); addEventListener('hashchange', update); return () => removeEventListener('hashchange', update) }, [])
   const completed = workspace?.tasks.filter(task => task.status === 'complete').length ?? 0
@@ -27,19 +33,38 @@ export function App() {
     setActiveTask(null)
   }
 
+  function login(nextRole: UserRole, nextTenantId: string) {
+    sessionStorage.setItem('mock-role', nextRole)
+    sessionStorage.setItem('mock-tenant', nextTenantId)
+    setRole(nextRole)
+    setTenantId(nextTenantId)
+    location.hash = nextRole === 'cpa' ? '#cpa-home' : '#home'
+  }
+
+  function logout() {
+    sessionStorage.removeItem('mock-role')
+    sessionStorage.removeItem('mock-tenant')
+    setRole(null)
+    setTenantId(null)
+    setSelectedClient(null)
+    setAccountMenuOpen(false)
+    location.hash = '#login'
+  }
+
+  if (!role || !tenantId) return <LoginScreen onLogin={login}/>
   if (!workspace) return <div className="loading"><div className="brand-mark">M</div><p>Preparing your tax workspace…</p></div>
 
   return <div className="app-shell">
     <header>
       <a className="brand" href="#"><span className="brand-mark">M</span><span>MiraFlores <b>Tax</b></span></a>
-      <div className="header-actions"><div className="role-preview"><span>PROTOTYPE VIEW</span><a className={route !== '#cpa-review' ? 'selected' : ''} href="#documents">Client</a><a className={route === '#cpa-review' ? 'selected' : ''} href="#cpa-review">CPA</a></div><button className="icon-button" aria-label="Notifications"><Bell size={19}/><span className="notification-dot"/></button><button className="avatar" aria-label="Account menu">{route === '#cpa-review' ? 'JL' : 'MF'}</button></div>
+      <div className="header-actions"><span className="active-role">{role === 'cpa' ? 'CPA workspace' : 'Client workspace'}</span><button className="icon-button" aria-label="Notifications"><Bell size={19}/><span className="notification-dot"/></button><div className="account-menu-wrap"><button className="avatar" aria-label="Open account menu" aria-expanded={accountMenuOpen} onClick={()=>setAccountMenuOpen(!accountMenuOpen)}>{role === 'cpa' ? 'JL' : 'MF'}</button>{accountMenuOpen&&<div className="account-menu"><div className="account-menu-user"><span className="avatar large">{role==='cpa'?'JL':'MF'}</span><div><strong>{role==='cpa'?'Jordan Lee, CPA':'Maya Flores'}</strong><span>{role==='cpa'?'jordan.lee@miraflorestax.com':'maya.flores@example.com'}</span><small>{role==='cpa'?'MiraFlores Tax · Tax preparer':'Client · 2025 individual return'}</small></div></div><button className="account-menu-logout" onClick={logout}><LogOut size={16}/>Sign out</button></div>}</div></div>
     </header>
     <aside>
-      {route === '#cpa-review' ? <nav aria-label="CPA navigation"><a className="active" href="#cpa-review"><FileText size={19}/>CPA review<span className="nav-count">1</span></a></nav> : <nav aria-label="Client navigation"><a className={route === '#home' || route === '' ? 'active' : ''} href="#home"><Home size={19}/>Home</a><a className={route === '#documents' ? 'active' : ''} href="#documents"><FolderOpen size={19}/>Documents<span className="nav-count">2</span></a><a className={route === '#messages' ? 'active' : ''} href="#messages"><MessageSquare size={19}/>Messages</a></nav>}
+      {role === 'cpa' ? <nav aria-label="CPA navigation"><a className={route === '#cpa-home' ? 'active' : ''} href="#cpa-home"><Home size={19}/>Dashboard</a><a className={route === '#cpa-clients' ? 'active' : ''} href="#cpa-clients"><UsersRound size={19}/>Clients</a><a className={route === '#cpa-status' ? 'active' : ''} href="#cpa-status" onClick={()=>{if(!selectedClient)setSelectedClient({id:'flores-2025',name:'Maya & Daniel Flores'})}}><CheckCircle2 size={19}/>Return status</a><a className={route === '#cpa-review' ? 'active' : ''} href={selectedClient?'#cpa-review':'#cpa-clients'}><FileText size={19}/>Review queue<span className="nav-count">4</span></a></nav> : <nav aria-label="Client navigation"><a className={route === '#home' || route === '' ? 'active' : ''} href="#home"><Home size={19}/>Home</a><a className={route === '#status' ? 'active' : ''} href="#status"><CheckCircle2 size={19}/>Return status</a><a className={route === '#documents' ? 'active' : ''} href="#documents"><FolderOpen size={19}/>Documents<span className="nav-count">2</span></a><a className={route === '#messages' ? 'active' : ''} href="#messages"><MessageSquare size={19}/>Messages</a></nav>}
       <div className="secure-note"><LockKeyhole size={17}/><div><strong>Your data is protected</strong><span>Bank-level encryption</span></div></div>
-      <div className="help-card"><CircleHelp size={20}/><div><strong>Need some help?</strong><span>Your tax team is here.</span><button>Ask a question</button></div></div>
+      <div className="help-card">{role === 'cpa' ? <BriefcaseBusiness size={20}/> : <CircleHelp size={20}/>}<div><strong>{role === 'cpa' ? 'MiraFlores Tax' : 'Need some help?'}</strong><span>{role === 'cpa' ? 'Jordan Lee · Preparer' : 'Your tax team is here.'}</span><button>{role === 'cpa' ? 'Firm resources' : 'Ask a question'}</button></div></div>
     </aside>
-    <main>{route === '#documents' ? <ChallengeEight role="client"/> : route === '#cpa-review' ? <ChallengeEight role="cpa"/> : route === '#messages' ? <div className="empty-state"><MessageSquare size={28}/><h1>Messages</h1><p>Your contextual conversations will appear here in a later challenge.</p><a href="#home">Return home</a></div> : <>
+    <main>{role === 'cpa' ? (route === '#cpa-review' && selectedClient ? <ChallengeEight role="cpa" clientName={selectedClient.name}/> : route === '#cpa-status' && selectedClient ? <ReturnStatus role="cpa" clientName={selectedClient.name} onReview={()=>{location.hash='#cpa-review'}}/> : route === '#cpa-clients' ? <CpaClients onOpen={client=>{setSelectedClient(client);location.hash='#cpa-status'}}/> : <CpaDashboard onReview={client => { setSelectedClient(client); location.hash = '#cpa-status' }}/>) : route === '#status' ? <ReturnStatus role="client"/> : route === '#documents' ? <ChallengeEight role="client"/> : route === '#messages' ? <div className="empty-state"><MessageSquare size={28}/><h1>Messages</h1><p>Your contextual conversations will appear here in a later challenge.</p><a href="#home">Return home</a></div> : <>
       <div className="eyebrow">2025 INDIVIDUAL RETURN</div>
       <section className="welcome-row"><div><h1>Good morning, {workspace.clientName}.</h1><p>Let’s keep your return moving. We’ll guide you one step at a time.</p></div><div className="deadline"><span>FILING DEADLINE</span><strong>{workspace.deadline}</strong></div></section>
       {progress < 100 ? <section className="next-action">

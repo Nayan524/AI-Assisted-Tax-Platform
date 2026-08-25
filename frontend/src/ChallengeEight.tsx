@@ -17,14 +17,15 @@ const statusMeta: Record<Status, { label: string; icon: typeof Bot }> = {
   approval: { label: 'Needs CPA review', icon: Info }, locked: { label: 'Calculated · locked', icon: LockKeyhole }, editable: { label: 'CPA editable', icon: Pencil },
 }
 
-export function ChallengeEight({role = 'cpa'}: {role?: 'client' | 'cpa'}) {
+export function ChallengeEight({role = 'cpa', clientName = 'Maya & Daniel Flores'}: {role?: 'client' | 'cpa'; clientName?: string}) {
   const [screen, setScreen] = useState<'documents' | 'return'>('documents')
   const [selected, setSelected] = useState<Field | null>(null)
   const [values, setValues] = useState<Record<string,string>>(() => Object.fromEntries(fields.map(f => [f.label, f.value])))
   const [approved, setApproved] = useState(false)
   if (role === 'client') return <ClientDocuments />
   return <div className="review-page">
-    <div className="review-title"><div><div className="eyebrow">CPA REVIEW WORKSPACE · 2025 INDIVIDUAL RETURN</div><h1>Review extracted tax details</h1><p>Compare AI-extracted values with source documents, correct them, and verify them for the return.</p></div><div className="review-progress"><CheckCircle2 size={18}/><span><strong>3 of 4 documents reviewed</strong><small>Assigned to Jordan Lee, CPA</small></span></div></div>
+    <div className="assignment-context"><span>ASSIGNED CLIENT</span><strong>{clientName}</strong><small>2025 individual return · Assigned to Jordan Lee, CPA</small></div>
+    <div className="review-title"><div><div className="eyebrow">CPA REVIEW WORKSPACE</div><h1>Review extracted tax details</h1><p>Compare AI-extracted values with this client’s source documents, correct them, and verify them for the return.</p></div><div className="review-progress"><CheckCircle2 size={18}/><span><strong>3 of 4 documents reviewed</strong><small>Client access is restricted</small></span></div></div>
     <div className="screen-tabs" role="tablist"><button className={screen === 'documents' ? 'selected' : ''} onClick={() => setScreen('documents')}><FileText size={17}/>Source documents</button><button className={screen === 'return' ? 'selected' : ''} onClick={() => setScreen('return')}><FileCheck2 size={17}/>CPA review <span className="review-count">1</span></button></div>
     <div className="affordance-key"><strong>How to read this screen</strong>{(['editable','ai','verified','approval','locked'] as Status[]).map(status => <StatusBadge key={status} status={status}/>)}</div>
     {screen === 'documents' ? <Documents onReview={() => setScreen('return')}/> : <section className="return-card">

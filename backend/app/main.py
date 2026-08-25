@@ -22,6 +22,20 @@ class Workspace(BaseModel):
     deadline: str
     tasks: list[Task]
 
+class LoginRequest(BaseModel):
+    tenant_id: str
+    email: str
+    password: str
+    role: Literal["client", "cpa"]
+
+class SessionUser(BaseModel):
+    tenant_id: str
+    id: str
+    name: str
+    email: str
+    role: Literal["client", "cpa"]
+    firm: str | None = None
+
 workspace = Workspace(clientName="Maya", taxYear=2025, returnName="Maya & Daniel Flores", deadline="October 15, 2026", tasks=[
     Task(id="profile", title="Tell us what changed this year", description="A short guided questionnaire helps us prepare the right forms.", type="questionnaire", status="ready", estimate="About 4 min", dueLabel="Start here"),
     Task(id="w2", title="Upload Daniel’s W-2", description="From Northstar Design Group", type="document", status="ready", estimate="1 document", dueLabel="Needed next"),
@@ -31,6 +45,20 @@ workspace = Workspace(clientName="Maya", taxYear=2025, returnName="Maya & Daniel
 
 @app.get("/api/health")
 def health(): return {"status": "ok", "mode": "mock"}
+
+@app.post("/api/auth/login", response_model=SessionUser)
+def login(credentials: LoginRequest):
+    accounts = {
+        "client": SessionUser(tenant_id="miraflores-tax", id="client-maya", name="Maya Flores", email="maya.flores@example.com", role="client", firm="MiraFlores Tax"),
+        "cpa": SessionUser(tenant_id="miraflores-tax", id="cpa-jordan", name="Jordan Lee, CPA", email="jordan.lee@miraflorestax.com", role="cpa", firm="MiraFlores Tax"),
+    }
+    account = accounts[credentials.role]
+    if credentials.tenant_id != account.tenant_id or credentials.email.lower() != account.email or credentials.password != "demo123":
+        raise HTTPException(status_code=401, detail="Invalid sample credentials")
+    return account
+
+@app.post("/api/auth/logout")
+def logout(): return {"signed_out": True}
 
 @app.get("/api/client/workspace", response_model=Workspace)
 def get_workspace(): return workspace

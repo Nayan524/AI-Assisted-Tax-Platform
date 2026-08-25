@@ -4,6 +4,10 @@ Challenge 03, **Where to Start**, gives a first-time tax client one clear next a
 
 Challenge 08, **Clickable vs. Editable**, adds a shared interaction language across document and return-data screens. It distinguishes editable, AI-extracted, verified, approval-required, and locked values, with working edit, approval, source-navigation, and explanation interactions.
 
+Challenge 05, **Role-Aware Experiences**, adds mocked sign-in, isolated client and CPA sessions, role-specific dashboards and navigation, guarded routes, and sign-out. Authentication is intentionally simulated; a production implementation must enforce authorization server-side.
+
+Challenge 06, **Return Status & Progress**, adds a shared five-stage return lifecycle. Clients receive plain-language progress and action ownership, while CPAs see assigned owners, internal blockers, operational detail, and a direct path to resolve review work.
+
 ## Run locally
 
 ```powershell
