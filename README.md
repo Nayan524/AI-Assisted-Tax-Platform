@@ -1,5 +1,17 @@
 # AI-Assisted Tax Platform
 
+## Purpose
+
+The AI-Assisted Tax Platform is a shared workspace for taxpayers and tax professionals to complete a tax return without relying on disconnected email threads, spreadsheets, document folders, and manual follow-up lists. It keeps documents, extracted tax values, review work, return progress, and client questions connected to the same return.
+
+The platform helps:
+
+- **Individual taxpayers and business owners** understand what they need to do next, upload documents securely, respond to document-specific questions, and follow the progress of their return without needing tax-process expertise.
+- **CPAs and tax preparers** prioritize their assigned returns, review AI-extracted values against original source documents, correct or verify those values, and communicate with clients in context.
+- **Reviewers and firm staff** understand ownership, blockers, outstanding requests, and the source evidence behind tax data while working within one consistent product.
+
+The project exists to reduce the most common sources of delay and error in tax preparation: unclear next steps, fragmented communication, missing documents, manual data entry, lost context, and AI output that cannot be easily explained or corrected. AI assists with extraction, confidence signals, warnings, and suggested corrections, but professional verification remains with the CPA. The prototype emphasizes transparency, traceability, role-appropriate access, and keeping users oriented as they move between related documents, cases, tasks, and return data.
+
 Challenge 03, **Where to Start**, gives a first-time tax client one clear next action, a short setup checklist, progress and deadline context, and a transition into the normal workspace.
 
 Challenge 08, **Clickable vs. Editable**, adds a shared interaction language across document and return-data screens. It distinguishes editable, AI-extracted, verified, approval-required, and locked values, with working edit, approval, source-navigation, and explanation interactions.
