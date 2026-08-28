@@ -38,9 +38,35 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-## Real vs simulated
+## What is genuinely wired up vs. simulated
 
-The onboarding interactions, progress updates, responsive layout, completed and blocked states, and post-onboarding experience are wired in the frontend. Client records, task completion, uploads, authentication, notifications, and tax preparation activity are simulated. The FastAPI routes define the intended mock contract; the frontend currently uses an in-browser adapter with the same data shape so the prototype can be reviewed without starting the backend.
+This project is an interactive product prototype, not a production tax-preparation or filing system.
+
+### Genuinely wired up
+
+- Role-specific client and CPA navigation, screens, route guards, sign-in, sign-out, and an active-client context for CPA workflows.
+- Client document selection and upload interactions, an uploaded-files library, document removal behavior, and in-app viewing of the included sample PDFs.
+- CPA review interactions for opening source documents, tracing extracted values to their evidence, editing or verifying values, and highlighting fields that need attention because of lower AI confidence.
+- Document-linked cases with client-visible messages, CPA-only internal notes, attention indicators, responses, resolution controls, and navigation between a case and its related document or review screen.
+- Client progress steps, prerequisite locking, return-status navigation, dashboard search and filtering, and priority-based sorting against the mock dataset.
+- Responsive interface behavior and local session state needed to demonstrate the workflows end to end.
+
+### Simulated behind the scenes
+
+- Users, firms, tenant membership, CPA-to-client assignments, permissions, return records, cases, notifications, deadlines, statuses, priorities, and AI results are seeded or stored in browser state.
+- Authentication is a demonstration flow only. Credentials are not validated by a production identity provider, and permissions are not enforced by a database-backed authorization layer.
+- Uploaded files are available for the current browser session; they are not sent to durable or encrypted object storage.
+- The bundled W-2, 1099, K-1, mortgage, health-insurance, brokerage, property-tax, charitable, and estimated-tax PDFs are synthetic samples and must not be used for filing.
+- AI extraction, confidence scores, explanations, recommendations, and corrections use plausible mocked responses. No document OCR or external AI service currently processes uploaded files.
+- The FastAPI service exposes a lightweight mock contract and health endpoint, but the frontend primarily uses its in-browser data adapter. There is no production database, background processing, audit service, email delivery, e-signature, tax calculation engine, e-filing integration, or payment processing.
+
+### Decisions worth explaining
+
+- The prototype keeps clients and CPAs in one cohesive product shell while changing navigation and available actions by role. CPA work is scoped to the client selected from the dashboard.
+- Communication is organized around document-linked cases instead of a generic inbox so both parties can see what the question concerns and where action is needed.
+- Clients upload documents and respond to cases; CPAs remain responsible for reviewing and verifying extracted tax values.
+- AI assistance is presented with evidence, confidence, uncertainty, and correction controls. It supports professional judgment rather than silently replacing it.
+- Mock data was chosen deliberately so the assignment's interaction and information-design challenges can be reviewed without requiring production credentials, sensitive taxpayer data, or third-party services.
 
 ## Deploy on Render
 
