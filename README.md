@@ -56,11 +56,11 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-## What is genuinely wired up vs. simulated
+## Wired vs. Simulated
 
 This project is an interactive product prototype, not a production tax-preparation or filing system.
 
-### Genuinely wired up
+### Wired Up
 
 - Separate client and CPA sign-in experiences with role-specific navigation, screens, route guards, sign-out, and an active-client context that follows a CPA across workflows.
 - Client onboarding and progress steps, including prerequisite locking, clear next actions, deadline context, and navigation back to the home screen.
@@ -75,7 +75,7 @@ This project is an interactive product prototype, not a production tax-preparati
 - Connected navigation among cases, documents, return data, review details, and return status without losing the selected client or workflow context.
 - Responsive black, white, and grey interface behavior and browser state needed to demonstrate the workflows end to end.
 
-### Simulated behind the scenes
+### Simulated
 
 - Users, credentials, tax firms, tenant membership, CPA-to-client assignments, permissions, client records, return records, cases, deadlines, statuses, priorities, notifications, and tasks use seeded data or browser state.
 - Authentication is a demonstration flow only. Credentials are not validated by a production identity provider, and permissions are not enforced by a database-backed authorization system.
@@ -86,15 +86,20 @@ This project is an interactive product prototype, not a production tax-preparati
 - Tax calculations, preparation of a final return, e-signatures, payments, electronic filing, and IRS or state integrations are not implemented.
 - The FastAPI service exposes a lightweight mock contract and health endpoint, but most frontend workflows currently use an in-browser data adapter. There is no production database, background job processor, persistent audit service, or production document-processing pipeline.
 
-### Decisions worth explaining
+## Design Decisions
 
-- The prototype keeps clients and CPAs in one cohesive product shell while changing navigation and available actions by role. CPA work is scoped to the client selected from the dashboard.
-- Communication is organized around document-linked cases instead of a generic inbox so both parties can see what the question concerns and where action is needed.
-- Clients upload documents and respond to cases; CPAs remain responsible for reviewing and verifying extracted tax values.
-- AI assistance is presented with evidence, confidence, uncertainty, and correction controls. It supports professional judgment rather than silently replacing it.
-- Mock data was chosen deliberately so the assignment's interaction and information-design challenges can be reviewed without requiring production credentials, sensitive taxpayer data, or third-party services.
+- **One product with role-aware experiences:** Clients and CPAs use the same visual system and product shell, while navigation and permitted actions adapt to the signed-in role. This avoids creating disconnected products while keeping professional-only controls away from clients.
+- **Client context follows the CPA:** A CPA selects an assigned client from the dashboard, and that active-client context carries into review, return status, and messages. This reduces the risk of reviewing or discussing the wrong taxpayer's information.
+- **Action-oriented dashboard:** The CPA landing page emphasizes clients who need attention, with search, status filters, priority filters, and direct paths into work. It is designed around “what should I work on now?” rather than passive reporting.
+- **Cases instead of a generic inbox:** Communication is organized around a document or tax issue. Both parties can understand what a conversation concerns, while internal firm notes remain separate from client-visible messages.
+- **Clear division of responsibility:** Clients upload documents and respond to requests, but only CPAs edit, review, and verify AI-extracted tax values. The interface does not imply that client confirmation replaces professional review.
+- **AI that can be checked and corrected:** AI output includes confidence, supporting evidence, uncertainty, and correction controls. Lower-confidence fields are visually surfaced for CPA attention, and source traceability connects a value to the original document.
+- **Context-preserving navigation:** Related cases, documents, extracted values, and return-status screens link to one another while retaining the selected client and workflow context. Back-to-home navigation and prerequisite states help users stay oriented.
+- **Progressive disclosure:** Client screens emphasize plain-language next steps, while CPA screens expose professional review detail. Additional evidence and controls appear when needed instead of overwhelming every screen.
+- **Restrained visual system:** A black, white, and grey palette, consistent status treatments, compact document rows, and reusable interaction patterns keep dense tax workflows readable without relying on decorative color.
+- **Safe prototype data:** Mock records and synthetic PDFs make document volume, prioritization, AI transparency, and collaboration flows reviewable without production credentials, real taxpayer information, or third-party services.
 
-## Deploy on Render
+## Render Deployment
 
 The repository includes a `render.yaml` Blueprint that creates both services:
 
