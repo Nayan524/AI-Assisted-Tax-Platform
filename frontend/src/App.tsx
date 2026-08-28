@@ -8,6 +8,12 @@ import { CpaDashboard, LoginScreen, type UserRole } from './RoleScreens'
 import { ReturnStatus } from './ReturnStatus'
 
 const taskIcon = { questionnaire: CircleHelp, document: Upload, review: FileText }
+const questionnaireOptions = ['Employment or income','Home or address','Family or dependents','Nothing changed']
+
+function getQuestionnaireAnswers(clientId:string){
+  try{return JSON.parse(localStorage.getItem(`mock-questionnaire-${clientId}`)||'[]') as string[]}
+  catch{return []}
+}
 
 export function App() {
   const [workspace, setWorkspace] = useState<ClientWorkspace | null>(null)
@@ -23,6 +29,7 @@ export function App() {
   const [selectedClient, setSelectedClient] = useState<{id:string;name:string} | null>(()=>{try{return JSON.parse(sessionStorage.getItem('mock-selected-client')||'null')}catch{return null}})
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
+  const [questionnaireAnswers,setQuestionnaireAnswers]=useState<string[]>(()=>getQuestionnaireAnswers('flores-2025'))
   const [,setCountsVersion]=useState(0)
   useEffect(() => { getWorkspace().then(setWorkspace) }, [])
   useEffect(() => { const update = () => setRoute(location.hash || '#home'); addEventListener('hashchange', update); return () => removeEventListener('hashchange', update) }, [])
@@ -41,6 +48,16 @@ export function App() {
     setWorkspace(await completeTask(activeTask.id))
     setSaving(false)
     setActiveTask(null)
+  }
+
+  function toggleQuestionnaireAnswer(answer:string){
+    setQuestionnaireAnswers(current=>{
+      const next=answer==='Nothing changed'
+        ? (current.includes(answer)?[]:[answer])
+        : (current.includes(answer)?current.filter(item=>item!==answer):[...current.filter(item=>item!=='Nothing changed'),answer])
+      localStorage.setItem('mock-questionnaire-flores-2025',JSON.stringify(next))
+      return next
+    })
   }
 
   function openTask(task: OnboardingTask) {
@@ -78,12 +95,12 @@ export function App() {
       <div className="header-actions">{!(role==='cpa'&&selectedClient)&&<span className="active-role">{role==='cpa'?'CPA workspace · Select a client':'Client workspace'}</span>}<button className="icon-button" aria-label="Notifications"><Bell size={19}/><span className="notification-dot"/></button><div className="account-menu-wrap"><button className="avatar" aria-label="Open account menu" aria-expanded={accountMenuOpen} onClick={()=>setAccountMenuOpen(!accountMenuOpen)}>{role === 'cpa' ? 'JL' : 'MF'}</button>{accountMenuOpen&&<div className="account-menu"><div className="account-menu-user"><span className="avatar large">{role==='cpa'?'JL':'MF'}</span><div><strong>{role==='cpa'?'Jordan Lee, CPA':'Maya Flores'}</strong><span>{role==='cpa'?'jordan.lee@miraflorestax.com':'maya.flores@example.com'}</span><small>{role==='cpa'?'MiraFlores Tax · Tax preparer':'Client · 2025 individual return'}</small></div></div><button className="account-menu-logout" onClick={logout}><LogOut size={16}/>Sign out</button></div>}</div></div>
     </header>
     <aside>
-      {role === 'cpa' ? <nav aria-label="CPA navigation"><a className={routePath === '#cpa-home' || routePath === '#cpa-clients' ? 'active' : ''} href="#cpa-home"><Home size={19}/>Dashboard</a><a className={`${routePath === '#cpa-status' ? 'active' : ''} ${!selectedClient?'disabled':''}`} href={selectedClient?'#cpa-status':'#cpa-home'} aria-disabled={!selectedClient}><CheckCircle2 size={19}/>Return status</a><a className={`${routePath === '#cpa-review' ? 'active' : ''} ${!selectedClient?'disabled':''}`} href={selectedClient?'#cpa-review':'#cpa-home'} aria-disabled={!selectedClient}><FileText size={19}/>Review queue</a><a className={`${routePath === '#cpa-messages' ? 'active' : ''} ${!selectedClient?'disabled':''}`} href={selectedClient?'#cpa-messages':'#cpa-home'} aria-disabled={!selectedClient}><MessageSquare size={19}/>Messages{messageCount>0&&<span className="nav-count">{messageCount}</span>}</a></nav> : <nav aria-label="Client navigation"><a className={routePath === '#home' || routePath === '' ? 'active' : ''} href="#home"><Home size={19}/>Home</a><a className={routePath === '#status' ? 'active' : ''} href="#status"><CheckCircle2 size={19}/>Return status</a><a className={routePath === '#documents' ? 'active' : ''} href="#documents"><FolderOpen size={19}/>Documents<span className="nav-count">2</span></a><a className={routePath === '#messages' ? 'active' : ''} href="#messages"><MessageSquare size={19}/>Messages{messageCount>0&&<span className="nav-count">{messageCount}</span>}</a></nav>}
+      {role === 'cpa' ? <nav aria-label="CPA navigation"><a className={routePath === '#cpa-home' || routePath === '#cpa-clients' ? 'active' : ''} href="#cpa-home"><Home size={19}/>Dashboard</a><a className={`${routePath === '#cpa-status' ? 'active' : ''} ${!selectedClient?'disabled':''}`} href={selectedClient?'#cpa-status':'#cpa-home'} aria-disabled={!selectedClient}><CheckCircle2 size={19}/>Return status</a><a className={`${routePath === '#cpa-questionnaire' ? 'active' : ''} ${!selectedClient?'disabled':''}`} href={selectedClient?'#cpa-questionnaire':'#cpa-home'} aria-disabled={!selectedClient}><CircleHelp size={19}/>Questionnaire</a><a className={`${routePath === '#cpa-review' ? 'active' : ''} ${!selectedClient?'disabled':''}`} href={selectedClient?'#cpa-review':'#cpa-home'} aria-disabled={!selectedClient}><FileText size={19}/>Review queue</a><a className={`${routePath === '#cpa-messages' ? 'active' : ''} ${!selectedClient?'disabled':''}`} href={selectedClient?'#cpa-messages':'#cpa-home'} aria-disabled={!selectedClient}><MessageSquare size={19}/>Messages{messageCount>0&&<span className="nav-count">{messageCount}</span>}</a></nav> : <nav aria-label="Client navigation"><a className={routePath === '#home' || routePath === '' ? 'active' : ''} href="#home"><Home size={19}/>Home</a><a className={routePath === '#status' ? 'active' : ''} href="#status"><CheckCircle2 size={19}/>Return status</a><a className={routePath === '#documents' ? 'active' : ''} href="#documents"><FolderOpen size={19}/>Documents<span className="nav-count">2</span></a><a className={routePath === '#messages' ? 'active' : ''} href="#messages"><MessageSquare size={19}/>Messages{messageCount>0&&<span className="nav-count">{messageCount}</span>}</a></nav>}
       {role==='client'&&<div className="sidebar-deadline"><span>FILING DEADLINE</span><strong>{workspace.deadline}</strong></div>}
       <div className="secure-note"><LockKeyhole size={17}/><div><strong>Your data is protected</strong><span>Bank-level encryption</span></div></div>
       <div className="help-card">{role === 'cpa' ? <BriefcaseBusiness size={20}/> : <CircleHelp size={20}/>}<div><strong>{role === 'cpa' ? 'MiraFlores Tax' : 'Need some help?'}</strong><span>{role === 'cpa' ? 'Jordan Lee · Preparer' : 'Your tax support team is here.'}</span><button onClick={()=>role==='client'&&setSupportOpen(true)}>{role === 'cpa' ? 'Firm resources' : 'Ask a question'}</button></div></div>
     </aside>
-    <main>{contextCaseId&&<WorkflowContextBar role={role} caseId={contextCaseId} clientName={selectedClient?.name||workspace.clientName} current={routePath}/>} {role === 'cpa' ? (routePath === '#cpa-messages' && selectedClient ? <Collaboration role="cpa" clientId={selectedClient.id} clientName={selectedClient.name}/> : routePath === '#cpa-review' && selectedClient ? <ChallengeEight role="cpa" clientId={selectedClient.id} clientName={selectedClient.name}/> : routePath === '#cpa-status' && selectedClient ? <ReturnStatus role="cpa" clientName={selectedClient.name} onReview={()=>{location.hash=`#cpa-review?case=${contextCaseId||''}`}}/> : <CpaDashboard onReview={client => { selectClient(client); location.hash = '#cpa-status' }}/>) : routePath === '#status' ? <ReturnStatus role="client"/> : routePath === '#documents' ? <ChallengeEight role="client" onUploadComplete={async()=>{const task=workspace.tasks.find(item=>item.status==='ready'&&item.type==='document');if(task)setWorkspace(await completeTask(task.id));location.hash='#home'}}/> : routePath === '#messages' ? <Collaboration role="client" clientId="flores-2025" clientName="Maya & Daniel Flores"/> : <>
+    <main>{contextCaseId&&<WorkflowContextBar role={role} caseId={contextCaseId} clientName={selectedClient?.name||workspace.clientName} current={routePath}/>} {role === 'cpa' ? (routePath === '#cpa-messages' && selectedClient ? <Collaboration role="cpa" clientId={selectedClient.id} clientName={selectedClient.name}/> : routePath === '#cpa-review' && selectedClient ? <ChallengeEight role="cpa" clientId={selectedClient.id} clientName={selectedClient.name}/> : routePath === '#cpa-questionnaire' && selectedClient ? <CpaQuestionnaire clientName={selectedClient.name} answers={getQuestionnaireAnswers(selectedClient.id)}/> : routePath === '#cpa-status' && selectedClient ? <ReturnStatus role="cpa" clientName={selectedClient.name} onReview={()=>{location.hash=`#cpa-review?case=${contextCaseId||''}`}}/> : <CpaDashboard onReview={client => { selectClient(client); location.hash = '#cpa-status' }}/>) : routePath === '#status' ? <ReturnStatus role="client"/> : routePath === '#documents' ? <ChallengeEight role="client" onUploadComplete={async()=>{const task=workspace.tasks.find(item=>item.status==='ready'&&item.type==='document');if(task)setWorkspace(await completeTask(task.id));location.hash='#home'}}/> : routePath === '#messages' ? <Collaboration role="client" clientId="flores-2025" clientName="Maya & Daniel Flores"/> : <>
       <div className="eyebrow">2025 INDIVIDUAL RETURN</div>
       <section className="welcome-row"><p>Let’s keep your return moving. We’ll guide you one step at a time.</p></section>
       {progress < 100 ? <section className="next-action">
@@ -99,10 +116,21 @@ export function App() {
     </main>
     {activeTask && <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && setActiveTask(null)}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="task-title">
       <button className="close" onClick={() => setActiveTask(null)} aria-label="Close"><X/></button><button className="modal-back-home" onClick={()=>{setActiveTask(null);location.hash='#home'}}><ArrowLeft size={14}/>Back to Home</button><span className="modal-icon"><CircleHelp/></span><div className="eyebrow">STEP {workspace.tasks.indexOf(activeTask) + 1} OF {workspace.tasks.length}</div><h2 id="task-title">{activeTask.title}</h2>
-      <div className="question"><label>Which of these changed in 2025?</label>{['Employment or income','Home or address','Family or dependents','Nothing changed'].map(item => <label className="choice" key={item}><input type="checkbox"/>{item}</label>)}</div>
-      <button className="primary wide" disabled={saving} onClick={finishTask}>{saving ? 'Saving…' : 'Save and continue'} <ChevronRight size={18}/></button><p className="privacy"><LockKeyhole size={14}/>Only you and your tax team can see this information.</p>
+      <div className="question"><label>Which of these changed in 2025?</label>{questionnaireOptions.map(item => <label className="choice" key={item}><input type="checkbox" checked={questionnaireAnswers.includes(item)} onChange={()=>toggleQuestionnaireAnswer(item)}/>{item}</label>)}</div>
+      <button className="primary wide" disabled={saving||questionnaireAnswers.length===0} onClick={finishTask}>{saving ? 'Saving…' : 'Save and continue'} <ChevronRight size={18}/></button><p className="privacy"><LockKeyhole size={14}/>Only you and your tax team can see this information.</p>
     </section></div>}
     {role==='client'&&supportOpen&&<SupportChat onClose={()=>setSupportOpen(false)}/>} 
+  </div>
+}
+
+function CpaQuestionnaire({clientName,answers}:{clientName:string;answers:string[]}){
+  return <div className="cpa-questionnaire-page">
+    <div className="eyebrow">CLIENT QUESTIONNAIRE</div>
+    <div className="cpa-questionnaire-heading"><div><h1>Questionnaire responses</h1><p>Answers submitted by {clientName} for the 2025 return.</p></div><span className={answers.length?'submitted':'not-submitted'}>{answers.length?'Submitted':'Not submitted'}</span></div>
+    <section className="questionnaire-response-card"><header><div><small>QUESTION 1</small><h2>Which of these changed in 2025?</h2></div><CircleHelp size={21}/></header>
+      {answers.length?<div className="questionnaire-answer-list">{questionnaireOptions.map(option=><div className={`questionnaire-answer ${answers.includes(option)?'selected':''}`} key={option}><span>{answers.includes(option)&&<Check size={15}/>}</span><strong>{option}</strong><small>{answers.includes(option)?'Selected by client':'Not selected'}</small></div>)}</div>:<div className="questionnaire-empty"><CircleHelp size={27}/><strong>No responses submitted</strong><p>This client has not completed the questionnaire yet.</p></div>}
+    </section>
+    <p className="questionnaire-readonly"><LockKeyhole size={14}/>Client responses are read-only for the CPA. Contact the client through Messages if clarification is needed.</p>
   </div>
 }
 
