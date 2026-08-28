@@ -41,3 +41,12 @@ uvicorn app.main:app --reload --port 8000
 ## Real vs simulated
 
 The onboarding interactions, progress updates, responsive layout, completed and blocked states, and post-onboarding experience are wired in the frontend. Client records, task completion, uploads, authentication, notifications, and tax preparation activity are simulated. The FastAPI routes define the intended mock contract; the frontend currently uses an in-browser adapter with the same data shape so the prototype can be reviewed without starting the backend.
+
+## Deploy on Render
+
+The repository includes a `render.yaml` Blueprint that creates both services:
+
+- `miraflores-tax-platform`: Vite frontend hosted as a Render Static Site.
+- `miraflores-tax-api`: FastAPI backend hosted as a Render Web Service.
+
+Push the desired branch to GitHub, then in Render select **New > Blueprint**, connect this repository, choose the branch, and deploy the detected Blueprint. The frontend currently uses mocked browser data; the API is deployed as the intended mock contract and exposes its health check at `/api/health`.

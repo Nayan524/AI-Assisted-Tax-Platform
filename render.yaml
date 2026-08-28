@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: miraflores-tax-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: ALLOWED_ORIGINS
+        value: https://miraflores-tax-platform.onrender.com
+
+  - type: web
+    name: miraflores-tax-platform
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    autoDeployTrigger: commit
